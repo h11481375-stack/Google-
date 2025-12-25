@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoe DIY - Gemini AI</title>
+    <style>
+        body, html { height: 100%; margin: 0; font-family: -apple-system, sans-serif; background-color: #0d1117; color: white; display: flex; flex-direction: column; }
+        #setup-area { background: #161b22; padding: 15px; border-bottom: 1px solid #30363d; }
+        .key-container { display: flex; gap: 10px; max-width: 800px; margin: 0 auto; }
+        #keyInput { flex: 1; background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 8px; outline: none; }
+        #confirmBtn { background-color: #1f6feb; color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #chat-container { flex: 1; overflow-y: auto; padding: 10px 0; }
+        .message-row { width: 100%; display: flex; justify-content: center; padding: 15px 0; }
+        .ai-row { background-color: #161b22; }
+        .message-content { width: 90%; max-width: 800px; display: flex; gap: 15px; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+        .ai-avatar { background: linear-gradient(45deg, #4285f4, #34a853); }
+        .user-avatar { background: #6e7681; }
+        .text { font-size: 15px; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap; }
+        .input-area { padding: 20px; background: #0d1117; display: flex; justify-content: center; }
+        .input-wrapper { position: relative; width: 90%; max-width: 800px; }
+        #userInput { width: 100%; background: #161b22; border: 1px solid #30363d; border-radius: 24px; padding: 14px 50px 14px 20px; color: white; outline: none; box-sizing: border-box; }
+        #sendBtn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #58a6ff; cursor: pointer; font-size: 22px; }
+    </style>
+</head>
+<body>
+
+<div id="setup-area">
+    <div class="key-container">
+        <input type="password" id="keyInput" placeholder="粘贴 Google Gemini API Key" autocomplete="new-password">
+        <button id="confirmBtn" onclick="confirmKey()">确认</button>
+    </div>
+</div>
+
+<div id="chat-container">
+    <div class="message-row ai-row">
+        <div class="message-content">
+            <div class="avatar ai-avatar">G</div>
+            <div class="text">你好！我是 Gemini。请输入你的 API Key，我可以帮你解答任何 DIY 难题。</div>
+        </div>
+    </div>
+</div>
+
+<div class="input-area">
+    <div class="input-wrapper">
+        <input type="text" id="userInput" placeholder="给 Gemini 发消息..." autocomplete="off">
+        <button id="sendBtn" onclick="handleSend()">🚀</button>
+    </div>
+</div>
+
+<script>
+    const chatContainer = document.getElementById('chat-container');
+    const userInput = document.getElementById('userInput');
+    const keyInput = document.getElementById('keyInput');
+
+    function confirmKey() {
+        if (keyInput.value.trim()) {
+            alert("✅ Gemini API 已连接");
+            userInput.focus();
+        } else {
+            alert("请输入有效 Key");
+        }
+    }
+
+    async function handleSend() {
+        const text = userInput.value.trim();
+        const apiKey = keyInput.value.trim();
+
+        if (!text || !apiKey) return;
+
+        addMessage(text, 'user');
+        userInput.value = '';
+
+        const tempId = 'ai-' + Date.now();
+        addMessage("Gemini 正在思考...", 'ai', tempId);
+
+        try {
+            // Google Gemini 1.5 Flash API 地址
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: "你是一位热情的 DIY 手工大师。请回答： " + text }]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+
+            const aiReply = data.candidates[0].content.parts[0].text;
+            document.getElementById(tempId).innerText = aiReply;
+
+        } catch (err) {
+            document.getElementById(tempId).innerText = "❌ 发生错误: " + err.message + "\n\n提示：Gemini API 需在特定网络环境下使用，请检查连接。";
+        }
+    }
+
+    function addMessage(text, role, id = null) {
+        const isAi = role === 'ai';
+        const html = `
+            <div class="message-row ${isAi ? 'ai-row' : ''}">
+                <div class="message-content">
+                    <div class="avatar ${isAi ? 'ai-avatar' : 'user-avatar'}">${isAi ? 'G' : '你'}</div>
+                    <div class="text" ${id ? `id="${id}"` : ''}>${text}</div>
+                </div>
+            </div>`;
+        chatContainer.insertAdjacentHTML('beforeend', html);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    keyInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') confirmKey(); });
+    userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleSend(); });
+</script>
+</body>
+</html>
